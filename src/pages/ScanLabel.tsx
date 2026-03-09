@@ -7,71 +7,8 @@ export default function ScanLabel() {
   const [validating, setValidating] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    let stream: MediaStream | null = null;
-    
-    const startCamera = async () => {
-      if (isCameraOpen && videoRef.current) {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: 'environment' } 
-          });
-          videoRef.current.srcObject = stream;
-          // Push state to handle physical back button
-          window.history.pushState({ cameraOpen: true }, '');
-        } catch (err) {
-          console.error("Error accessing camera:", err);
-          alert("Não foi possível acessar a câmera. Verifique as permissões.");
-          setIsCameraOpen(false);
-        }
-      }
-    };
-
-    startCamera();
-
-    const handlePopState = () => {
-      if (isCameraOpen) {
-        setIsCameraOpen(false);
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, [isCameraOpen]);
-
-  const closeCamera = () => {
-    setIsCameraOpen(false);
-    if (window.history.state?.cameraOpen) {
-      window.history.back();
-    }
-  };
-
-  const takePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const context = canvas.getContext('2d');
-      if (context) {
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageDataUrl = canvas.toDataURL('image/jpeg');
-        setImage(imageDataUrl);
-        closeCamera();
-        scanLabelImage(imageDataUrl);
-      }
-    }
-  };
 
   const handleCapture = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -115,43 +52,7 @@ export default function ScanLabel() {
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 pb-24">
-        {isCameraOpen ? (
-          <div className="fixed inset-0 z-50 bg-black flex flex-col">
-            <div className="flex-1 relative">
-              <video 
-                ref={videoRef} 
-                autoPlay 
-                playsInline 
-                className="w-full h-full object-cover"
-              />
-              <canvas ref={canvasRef} className="hidden" />
-              
-              <button 
-                onClick={closeCamera}
-                className="absolute top-4 left-4 w-10 h-10 bg-black/50 text-white rounded-full flex items-center justify-center backdrop-blur-md"
-              >
-                <X size={24} />
-              </button>
-              
-              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <div className="w-64 h-64 border-2 border-white/50 rounded-2xl relative">
-                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-white rounded-tl-2xl"></div>
-                  <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-white rounded-tr-2xl"></div>
-                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-white rounded-bl-2xl"></div>
-                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-white rounded-br-2xl"></div>
-                </div>
-              </div>
-            </div>
-            <div className="h-32 bg-black flex items-center justify-center pb-safe">
-              <button 
-                onClick={takePhoto}
-                className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center"
-              >
-                <div className="w-12 h-12 bg-white rounded-full"></div>
-              </button>
-            </div>
-          </div>
-        ) : !image ? (
+        {!image ? (
           <div className="h-full flex flex-col items-center justify-center space-y-6">
             <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500">
               <QrCode size={40} />
@@ -166,6 +67,14 @@ export default function ScanLabel() {
             <input
               type="file"
               accept="image/*"
+              capture="environment"
+              className="hidden"
+              ref={cameraInputRef}
+              onChange={handleCapture}
+            />
+            <input
+              type="file"
+              accept="image/*"
               className="hidden"
               ref={galleryInputRef}
               onChange={handleCapture}
@@ -173,7 +82,7 @@ export default function ScanLabel() {
             
             <div className="flex w-full max-w-xs gap-3">
               <button
-                onClick={() => setIsCameraOpen(true)}
+                onClick={() => cameraInputRef.current?.click()}
                 className="flex-1 py-4 bg-emerald-600 text-white rounded-xl font-medium shadow-sm active:bg-emerald-700 transition-colors flex flex-col items-center justify-center gap-2"
               >
                 <Camera size={24} />
