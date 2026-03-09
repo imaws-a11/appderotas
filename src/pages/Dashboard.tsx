@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Camera, QrCode, Map as MapIcon, History, ChevronRight, AlertCircle } from "lucide-react";
-import { GoogleMap, useJsApiLoader, Marker, Polyline } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer, Polyline } from '@react-google-maps/api';
 
 const containerStyle = {
   width: '100%',
@@ -13,6 +13,8 @@ export default function Dashboard() {
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [addressesLoaded, setAddressesLoaded] = useState(false);
   const [locationLoaded, setLocationLoaded] = useState(false);
+  const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
+  const [directionsError, setDirectionsError] = useState(false);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -60,13 +62,54 @@ export default function Dashboard() {
     ? { lat: addresses[0].latitude, lng: addresses[0].longitude } 
     : { lat: -23.5505, lng: -46.6333 }); // Default to São Paulo
 
-  // Create route path connecting all addresses (like spoke circuit)
+  // Create route path connecting all addresses
   const routePath = addresses.map(a => ({ lat: a.latitude, lng: a.longitude }));
   if (currentLocation) {
     routePath.unshift(currentLocation);
   }
 
   const isDataReady = addressesLoaded && locationLoaded;
+
+  const calculateRoute = useCallback(() => {
+    if (!isLoaded || !isDataReady || routePath.length < 2) return;
+
+    const directionsService = new google.maps.DirectionsService();
+    
+    const origin = routePath[0];
+    const destination = routePath[routePath.length - 1];
+    const waypoints = routePath.slice(1, -1).map(point => ({
+      location: point,
+      stopover: true
+    }));
+
+    // Google Maps Directions API limits waypoints to 25.
+    // If we have more, we should slice them or handle it differently.
+    // For now, we'll just take the first 25 waypoints to avoid errors.
+    const limitedWaypoints = waypoints.slice(0, 25);
+
+    directionsService.route(
+      {
+        origin: origin,
+        destination: destination,
+        waypoints: limitedWaypoints,
+        travelMode: google.maps.TravelMode.DRIVING,
+        optimizeWaypoints: true // Optimize the route
+      },
+      (result, status) => {
+        if (status === google.maps.DirectionsStatus.OK && result) {
+          setDirections(result);
+          setDirectionsError(false);
+        } else {
+          console.error(`error fetching directions: ${status}`, result);
+          setDirectionsError(true);
+        }
+      }
+    );
+  }, [isLoaded, isDataReady, routePath.length]);
+
+  useEffect(() => {
+    calculateRoute();
+  }, [calculateRoute]);
 
   return (
     <div className="p-6">
@@ -145,8 +188,23 @@ export default function Dashboard() {
                 />
               ))}
 
-              {/* Route Lines (Spoke Circuit) */}
-              {isDataReady && routePath.length > 1 && (
+              {/* Real Route */}
+              {directions && !directionsError && (
+                <DirectionsRenderer
+                  directions={directions}
+                  options={{
+                    suppressMarkers: true, // We are already rendering our own markers
+                    polylineOptions: {
+                      strokeColor: "#3b82f6",
+                      strokeOpacity: 0.8,
+                      strokeWeight: 4,
+                    }
+                  }}
+                />
+              )}
+
+              {/* Fallback Route Lines (Spoke Circuit) if Directions API fails */}
+              {isDataReady && routePath.length > 1 && directionsError && (
                 <Polyline
                   path={routePath}
                   options={{

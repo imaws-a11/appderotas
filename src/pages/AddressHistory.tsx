@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { History, MapPin, Search, Trash2, AlertTriangle, X, Edit3 } from "lucide-react";
+import { History, MapPin, Search, Trash2, AlertTriangle, X, Edit3, Crosshair, Loader2 } from "lucide-react";
 import EditAddressModal from "../components/EditAddressModal";
 
 export default function AddressHistory() {
@@ -8,6 +8,7 @@ export default function AddressHistory() {
   const [addressToDelete, setAddressToDelete] = useState<any>(null);
   const [addressToEdit, setAddressToEdit] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [updatingCoordsFor, setUpdatingCoordsFor] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -23,6 +24,98 @@ export default function AddressHistory() {
       console.error("Failed to fetch addresses", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateCoordinates = async (address: any) => {
+    if (!("geolocation" in navigator)) {
+      alert("Geolocalização não suportada pelo seu navegador.");
+      return;
+    }
+
+    setUpdatingCoordsFor(address.id);
+
+    try {
+      // 1. Get current GPS position
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { 
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        });
+      });
+
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      // 2. Use backend endpoint to verify/refine coordinates with Gemini and Google Maps
+      const response = await fetch('/api/verify-coordinates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          address: {
+            street: address.street,
+            number: address.number,
+            city: address.city,
+            state: address.state,
+            zip_code: address.zip_code
+          },
+          latitude: lat,
+          longitude: lng
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to verify coordinates');
+      }
+
+      const parsedData = await response.json();
+      
+      let newLat = lat;
+      let newLng = lng;
+      let usedAI = false;
+
+      if (parsedData.latitude && parsedData.longitude) {
+        newLat = parsedData.latitude;
+        newLng = parsedData.longitude;
+        usedAI = true;
+      }
+
+      // 3. Update the address in the database
+      const updateResponse = await fetch(`/api/addresses/${address.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...address,
+          latitude: newLat,
+          longitude: newLng
+        })
+      });
+
+      if (!updateResponse.ok) {
+        throw new Error('Failed to update address in database');
+      }
+
+      const updatedAddress = await updateResponse.json();
+      
+      // 4. Update local state
+      setAddresses(addresses.map(a => a.id === updatedAddress.id ? updatedAddress : a));
+      
+      if (usedAI) {
+        alert("Coordenadas atualizadas com sucesso usando GPS e IA!");
+      } else {
+        alert("Coordenadas atualizadas usando apenas GPS (IA não retornou formato válido).");
+      }
+
+    } catch (error) {
+      console.error("Error updating coordinates:", error);
+      alert("Erro ao atualizar coordenadas. Verifique sua conexão e permissões de GPS.");
+    } finally {
+      setUpdatingCoordsFor(null);
     }
   };
 
@@ -120,13 +213,27 @@ export default function AddressHistory() {
                 <p className="text-sm text-gray-500 truncate mt-0.5">
                   {address.city} - {address.state}
                 </p>
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
                   {address.is_registered_by_photo ? (
                     <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-medium rounded uppercase tracking-wider">Foto</span>
                   ) : null}
                   {address.label_code ? (
                     <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-medium rounded uppercase tracking-wider">Etiqueta</span>
                   ) : null}
+                  
+                  <button
+                    onClick={() => handleUpdateCoordinates(address)}
+                    disabled={updatingCoordsFor === address.id}
+                    className="flex items-center gap-1 px-2 py-0.5 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors text-[10px] font-medium rounded uppercase tracking-wider disabled:opacity-50"
+                    title="Atualizar coordenadas com GPS + IA"
+                  >
+                    {updatingCoordsFor === address.id ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <Crosshair size={12} />
+                    )}
+                    GPS+IA
+                  </button>
                 </div>
               </div>
 
