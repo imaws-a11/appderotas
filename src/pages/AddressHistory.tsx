@@ -6,6 +6,7 @@ export default function AddressHistory() {
   const [loading, setLoading] = useState(true);
   const [addressToDelete, setAddressToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     fetchAddresses();
@@ -44,6 +45,17 @@ export default function AddressHistory() {
     }
   };
 
+  const filteredAddresses = addresses.filter(address => {
+    const query = searchQuery.toLowerCase();
+    return (
+      (address.street && address.street.toLowerCase().includes(query)) ||
+      (address.number && address.number.toLowerCase().includes(query)) ||
+      (address.city && address.city.toLowerCase().includes(query)) ||
+      (address.state && address.state.toLowerCase().includes(query)) ||
+      (address.label_code && address.label_code.toLowerCase().includes(query))
+    );
+  });
+
   return (
     <div className="flex flex-col h-full bg-gray-50 relative">
       <header className="p-4 bg-white border-b border-gray-200 sticky top-0 z-10">
@@ -53,6 +65,8 @@ export default function AddressHistory() {
           <input 
             type="text" 
             placeholder="Buscar endereços..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl text-sm transition-all outline-none"
           />
         </div>
@@ -71,8 +85,16 @@ export default function AddressHistory() {
             <h2 className="text-lg font-semibold text-gray-900">Nenhum histórico ainda</h2>
             <p className="text-gray-500 text-sm mt-1">Os endereços que você registrar aparecerão aqui</p>
           </div>
+        ) : filteredAddresses.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
+              <Search size={32} />
+            </div>
+            <h2 className="text-lg font-semibold text-gray-900">Nenhum resultado encontrado</h2>
+            <p className="text-gray-500 text-sm mt-1">Tente buscar com outros termos</p>
+          </div>
         ) : (
-          addresses.map((address) => (
+          filteredAddresses.map((address) => (
             <div key={address.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex gap-4 relative">
               {address.image_url ? (
                 <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-gray-100">
