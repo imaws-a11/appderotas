@@ -21,6 +21,34 @@ export default function RoutesList() {
     }
   };
 
+  const handleCompleteStop = async (routeId: number, stopId: number) => {
+    try {
+      const response = await fetch(`/api/routes/${routeId}/stops/${stopId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "completed" })
+      });
+      if (response.ok) {
+        setRoutes(routes.map(route => {
+          if (route.id === routeId) {
+            return {
+              ...route,
+              stops: route.stops.map((stop: any) => {
+                if (stop.id === stopId) {
+                  return { ...stop, status: "completed" };
+                }
+                return stop;
+              })
+            };
+          }
+          return route;
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to update stop status", error);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-gray-50">
       <header className="p-4 bg-white border-b border-gray-200 flex items-center justify-between sticky top-0 z-10">
@@ -64,26 +92,37 @@ export default function RoutesList() {
               
               <div className="p-4 bg-gray-50/50">
                 <div className="space-y-3 relative before:absolute before:inset-y-0 before:left-[11px] before:w-0.5 before:bg-gray-200">
-                  {route.stops?.map((stop: any, idx: number) => (
-                    <div key={stop.id} className="flex items-start gap-3 relative z-10">
-                      <div className="w-6 h-6 rounded-full bg-white border-2 border-blue-500 flex items-center justify-center shrink-0 mt-0.5">
-                        <span className="text-[10px] font-bold text-blue-600">{idx + 1}</span>
+                  {route.stops?.map((stop: any, idx: number) => {
+                    const isCompleted = stop.status === 'completed';
+                    return (
+                    <div key={stop.id} className={`flex items-start gap-3 relative z-10 ${isCompleted ? 'opacity-60' : ''}`}>
+                      <div className={`w-6 h-6 rounded-full bg-white border-2 flex items-center justify-center shrink-0 mt-0.5 ${isCompleted ? 'border-emerald-500' : 'border-blue-500'}`}>
+                        {isCompleted ? (
+                          <CheckCircle2 size={12} className="text-emerald-600" />
+                        ) : (
+                          <span className="text-[10px] font-bold text-blue-600">{idx + 1}</span>
+                        )}
                       </div>
                       <div className="flex-1 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                        <p className="text-sm font-medium text-gray-900">{stop.street}, {stop.number}</p>
+                        <p className={`text-sm font-medium ${isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'}`}>{stop.street}, {stop.number}</p>
                         <p className="text-xs text-gray-500 mt-0.5">{stop.city}</p>
                         
-                        <div className="flex items-center gap-2 mt-3">
-                          <button className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium">
-                            <Navigation size={14} /> Navegar
-                          </button>
-                          <button className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-medium">
-                            <CheckCircle2 size={14} /> Concluir
-                          </button>
-                        </div>
+                        {!isCompleted && (
+                          <div className="flex items-center gap-2 mt-3">
+                            <button className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium">
+                              <Navigation size={14} /> Navegar
+                            </button>
+                            <button 
+                              onClick={() => handleCompleteStop(route.id, stop.id)}
+                              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-medium"
+                            >
+                              <CheckCircle2 size={14} /> Concluir
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
             </div>

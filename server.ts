@@ -264,6 +264,19 @@ async function startServer() {
     }
   });
 
+  // Update stop status
+  app.patch("/api/routes/:routeId/stops/:stopId", (req, res) => {
+    const { routeId, stopId } = req.params;
+    const { status } = req.body;
+    try {
+      db.prepare("UPDATE route_stops SET status = ? WHERE id = ? AND route_id = ?").run(status, stopId, routeId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to update stop status" });
+    }
+  });
+
   // --- Vite Middleware ---
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
