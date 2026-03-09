@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { History, MapPin, Search, Trash2, AlertTriangle, X } from "lucide-react";
+import { History, MapPin, Search, Trash2, AlertTriangle, X, Edit3 } from "lucide-react";
+import EditAddressModal from "../components/EditAddressModal";
 
 export default function AddressHistory() {
   const [addresses, setAddresses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [addressToDelete, setAddressToDelete] = useState<any>(null);
+  const [addressToEdit, setAddressToEdit] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -43,6 +45,11 @@ export default function AddressHistory() {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleAddressUpdated = (updatedAddress: any) => {
+    setAddresses(addresses.map(a => a.id === updatedAddress.id ? updatedAddress : a));
+    setAddressToEdit(null);
   };
 
   const filteredAddresses = addresses.filter(address => {
@@ -106,7 +113,7 @@ export default function AddressHistory() {
                 </div>
               )}
               
-              <div className="flex-1 min-w-0 flex flex-col justify-center pr-8">
+              <div className="flex-1 min-w-0 flex flex-col justify-center pr-16">
                 <h3 className="font-semibold text-gray-900 truncate">
                   {address.street}, {address.number}
                 </h3>
@@ -123,13 +130,22 @@ export default function AddressHistory() {
                 </div>
               </div>
 
-              <button 
-                onClick={() => setAddressToDelete(address)}
-                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                aria-label="Excluir endereço"
-              >
-                <Trash2 size={18} />
-              </button>
+              <div className="absolute top-4 right-4 flex flex-col gap-2">
+                <button 
+                  onClick={() => setAddressToEdit(address)}
+                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  aria-label="Editar endereço"
+                >
+                  <Edit3 size={18} />
+                </button>
+                <button 
+                  onClick={() => setAddressToDelete(address)}
+                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  aria-label="Excluir endereço"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
             </div>
           ))
         )}
@@ -179,6 +195,15 @@ export default function AddressHistory() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Edit Address Modal */}
+      {addressToEdit && (
+        <EditAddressModal 
+          address={addressToEdit} 
+          onClose={() => setAddressToEdit(null)} 
+          onSave={handleAddressUpdated} 
+        />
       )}
     </div>
   );

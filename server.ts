@@ -59,6 +59,30 @@ async function startServer() {
     }
   });
 
+  // Update an address
+  app.put("/api/addresses/:id", (req, res) => {
+    const { id } = req.params;
+    const { latitude, longitude, street, number, neighborhood, city, state, zip_code, label_code } = req.body;
+    try {
+      const stmt = db.prepare(`
+        UPDATE addresses 
+        SET latitude = ?, longitude = ?, street = ?, number = ?, neighborhood = ?, city = ?, state = ?, zip_code = ?, label_code = ?
+        WHERE id = ?
+      `);
+      const info = stmt.run(latitude, longitude, street, number, neighborhood, city, state, zip_code, label_code, id);
+      
+      if (info.changes > 0) {
+        const updatedAddress = db.prepare("SELECT * FROM addresses WHERE id = ?").get(id);
+        res.json(updatedAddress);
+      } else {
+        res.status(404).json({ error: "Address not found" });
+      }
+    } catch (error) {
+      console.error("Failed to update address:", error);
+      res.status(500).json({ error: "Failed to update address" });
+    }
+  });
+
   // Analyze address image using Gemini
   app.post("/api/analyze-address", async (req, res) => {
     const { imageBase64, latitude, longitude } = req.body;
@@ -159,6 +183,53 @@ async function startServer() {
     } catch (error) {
       console.error("Error analyzing address:", error);
       res.status(500).json({ error: "Failed to analyze address" });
+    }
+  });
+
+  // Verify coordinates using Gemini and Google Maps
+  app.post("/api/verify-coordinates", async (req, res) => {
+    const { address, latitude, longitude } = req.body;
+    
+    try {
+      const mapsPrompt = `Given the address details: ${JSON.stringify(address)} and the current GPS coordinates: ${latitude}, ${longitude}. Verify if these coordinates are accurate for this address. Return a JSON object with keys: latitude, longitude. If the GPS coordinates seem correct for the address, return them. If they seem off, return the corrected coordinates based on the address using Google Maps.`;
+      
+      const mapsResponse = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: mapsPrompt,
+        config: {
+          tools: [{ googleMaps: {} }],
+          toolConfig: {
+            retrievalConfig: {
+              latLng: {
+                latitude: parseFloat(latitude),
+                longitude: parseFloat(longitude)
+              }
+            }
+          }
+        }
+      });
+      
+      const parsePrompt = `Extract the latitude and longitude from this text into JSON: ${mapsResponse.text}`;
+      const parseResponse = await ai.models.generateContent({
+         model: "gemini-3.1-flash-lite-preview",
+         contents: parsePrompt,
+         config: {
+           responseMimeType: "application/json",
+           responseSchema: {
+             type: Type.OBJECT,
+             properties: {
+               latitude: { type: Type.NUMBER },
+               longitude: { type: Type.NUMBER }
+             }
+           }
+         }
+      });
+      
+      const parsedData = JSON.parse(parseResponse.text || "{}");
+      res.json(parsedData);
+    } catch (error) {
+      console.error("Error verifying coordinates:", error);
+      res.status(500).json({ error: "Failed to verify coordinates" });
     }
   });
 

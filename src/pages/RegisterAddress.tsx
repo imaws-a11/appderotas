@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, ChangeEvent, FormEvent } from "react";
-import { Camera, Upload, MapPin, CheckCircle2, Loader2, Edit3, Search, AlertCircle } from "lucide-react";
+import { Camera, Upload, MapPin, CheckCircle2, Loader2, Edit3, Search, AlertCircle, X, Maximize } from "lucide-react";
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 
 export default function RegisterAddress() {
@@ -8,6 +8,7 @@ export default function RegisterAddress() {
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -16,8 +17,9 @@ export default function RegisterAddress() {
   });
   
   const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [manualForm, setManualForm] = useState({
     street: '',
@@ -43,6 +45,68 @@ export default function RegisterAddress() {
       );
     }
   }, []);
+
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+    
+    const startCamera = async () => {
+      if (isCameraOpen && videoRef.current) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'environment' } 
+          });
+          videoRef.current.srcObject = stream;
+          // Push state to handle physical back button
+          window.history.pushState({ cameraOpen: true }, '');
+        } catch (err) {
+          console.error("Error accessing camera:", err);
+          alert("Não foi possível acessar a câmera. Verifique as permissões.");
+          setIsCameraOpen(false);
+        }
+      }
+    };
+
+    startCamera();
+
+    const handlePopState = () => {
+      if (isCameraOpen) {
+        setIsCameraOpen(false);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isCameraOpen]);
+
+  const closeCamera = () => {
+    setIsCameraOpen(false);
+    if (window.history.state?.cameraOpen) {
+      window.history.back();
+    }
+  };
+
+  const takePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext('2d');
+      if (context) {
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageDataUrl = canvas.toDataURL('image/jpeg');
+        setImage(imageDataUrl);
+        closeCamera();
+        analyzeImage(imageDataUrl);
+      }
+    }
+  };
 
   const handleCapture = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -318,6 +382,42 @@ export default function RegisterAddress() {
               Salvar Endereço
             </button>
           </form>
+        ) : isCameraOpen ? (
+          <div className="fixed inset-0 z-50 bg-black flex flex-col">
+            <div className="flex-1 relative">
+              <video 
+                ref={videoRef} 
+                autoPlay 
+                playsInline 
+                className="w-full h-full object-cover"
+              />
+              <canvas ref={canvasRef} className="hidden" />
+              
+              <button 
+                onClick={closeCamera}
+                className="absolute top-4 left-4 w-10 h-10 bg-black/50 text-white rounded-full flex items-center justify-center backdrop-blur-md"
+              >
+                <X size={24} />
+              </button>
+              
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div className="w-64 h-64 border-2 border-white/50 rounded-2xl relative">
+                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-white rounded-tl-2xl"></div>
+                  <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-white rounded-tr-2xl"></div>
+                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-white rounded-bl-2xl"></div>
+                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-white rounded-br-2xl"></div>
+                </div>
+              </div>
+            </div>
+            <div className="h-32 bg-black flex items-center justify-center pb-safe">
+              <button 
+                onClick={takePhoto}
+                className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center"
+              >
+                <div className="w-12 h-12 bg-white rounded-full"></div>
+              </button>
+            </div>
+          </div>
         ) : !image ? (
           <div className="h-full flex flex-col items-center justify-center space-y-6">
             <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">
@@ -333,14 +433,6 @@ export default function RegisterAddress() {
             <input
               type="file"
               accept="image/*"
-              capture="environment"
-              className="hidden"
-              ref={cameraInputRef}
-              onChange={handleCapture}
-            />
-            <input
-              type="file"
-              accept="image/*"
               className="hidden"
               ref={galleryInputRef}
               onChange={handleCapture}
@@ -348,7 +440,7 @@ export default function RegisterAddress() {
             
             <div className="flex w-full max-w-xs gap-3">
               <button
-                onClick={() => cameraInputRef.current?.click()}
+                onClick={() => setIsCameraOpen(true)}
                 className="flex-1 py-4 bg-blue-600 text-white rounded-xl font-medium shadow-sm active:bg-blue-700 transition-colors flex flex-col items-center justify-center gap-2"
               >
                 <Camera size={24} />
