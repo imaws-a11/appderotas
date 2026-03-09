@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, ChangeEvent, FormEvent } from "react";
-import { Camera, Upload, MapPin, CheckCircle2, Loader2, Edit3, Search } from "lucide-react";
+import { Camera, Upload, MapPin, CheckCircle2, Loader2, Edit3, Search, AlertCircle } from "lucide-react";
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 
 export default function RegisterAddress() {
@@ -9,7 +9,7 @@ export default function RegisterAddress() {
   const [result, setResult] = useState<any>(null);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   
-  const { isLoaded } = useJsApiLoader({
+  const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || '',
     libraries: ['places']
@@ -206,7 +206,15 @@ export default function RegisterAddress() {
       <div className="flex-1 overflow-y-auto p-4 pb-24">
         {mode === 'manual' ? (
           <form onSubmit={handleManualSubmit} className="space-y-4">
-            {isLoaded && (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY && (
+            {loadError ? (
+              <div className="bg-red-50 p-4 rounded-2xl border border-red-100 flex items-start gap-3">
+                <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={18} />
+                <div>
+                  <p className="text-sm font-medium text-red-800">Erro na Pesquisa Avançada</p>
+                  <p className="text-xs text-red-700 mt-0.5">A API do Google Places não está ativada.</p>
+                </div>
+              </div>
+            ) : isLoaded && (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY && (
               <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Pesquisa Avançada (Google)</label>
                 <Autocomplete onLoad={onLoad} onPlaceChanged={onPlaceChanged}>

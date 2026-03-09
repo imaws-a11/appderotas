@@ -11,8 +11,10 @@ const containerStyle = {
 export default function Dashboard() {
   const [addresses, setAddresses] = useState<any[]>([]);
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [addressesLoaded, setAddressesLoaded] = useState(false);
+  const [locationLoaded, setLocationLoaded] = useState(false);
 
-  const { isLoaded } = useJsApiLoader({
+  const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || ''
   });
@@ -28,11 +30,17 @@ export default function Dashboard() {
             lat: position.coords.latitude,
             lng: position.coords.longitude
           });
+          setLocationLoaded(true);
         },
-        (error) => console.error("Error getting location:", error),
+        (error) => {
+          console.error("Error getting location:", error);
+          setLocationLoaded(true);
+        },
         { enableHighAccuracy: true }
       );
       return () => navigator.geolocation.clearWatch(watchId);
+    } else {
+      setLocationLoaded(true);
     }
   }, []);
 
@@ -43,6 +51,8 @@ export default function Dashboard() {
       setAddresses(data.filter((a: any) => a.latitude && a.longitude));
     } catch (error) {
       console.error("Failed to fetch addresses", error);
+    } finally {
+      setAddressesLoaded(true);
     }
   };
 
@@ -55,6 +65,8 @@ export default function Dashboard() {
   if (currentLocation) {
     routePath.unshift(currentLocation);
   }
+
+  const isDataReady = addressesLoaded && locationLoaded;
 
   return (
     <div className="p-6">
@@ -96,7 +108,13 @@ export default function Dashboard() {
           </div>
         )}
         <div className="h-48 w-full rounded-2xl overflow-hidden shadow-sm border border-gray-200 relative z-0">
-          {isLoaded ? (
+          {loadError ? (
+            <div className="w-full h-full bg-red-50 flex flex-col items-center justify-center p-4 text-center">
+              <AlertCircle className="text-red-500 mb-2" size={24} />
+              <p className="text-sm text-red-700 font-medium">Erro ao carregar o mapa</p>
+              <p className="text-xs text-red-600 mt-1">Verifique se a API do Google Maps está ativada.</p>
+            </div>
+          ) : isLoaded ? (
             <GoogleMap
               mapContainerStyle={containerStyle}
               center={center}
@@ -119,7 +137,7 @@ export default function Dashboard() {
               )}
               
               {/* Address Markers */}
-              {addresses.map((address) => (
+              {isDataReady && addresses.map((address) => (
                 <Marker 
                   key={address.id} 
                   position={{ lat: address.latitude, lng: address.longitude }} 
@@ -128,7 +146,7 @@ export default function Dashboard() {
               ))}
 
               {/* Route Lines (Spoke Circuit) */}
-              {routePath.length > 1 && (
+              {isDataReady && routePath.length > 1 && (
                 <Polyline
                   path={routePath}
                   options={{
