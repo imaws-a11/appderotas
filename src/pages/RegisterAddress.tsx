@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, ChangeEvent, FormEvent } from "react";
-import { Camera, Upload, MapPin, CheckCircle2, Loader2, Edit3 } from "lucide-react";
+import { Camera, Upload, MapPin, CheckCircle2, Loader2, Edit3, Search } from "lucide-react";
+import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 
 export default function RegisterAddress() {
   const [mode, setMode] = useState<'photo' | 'manual'>('photo');
@@ -7,6 +8,14 @@ export default function RegisterAddress() {
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
+  
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || '',
+    libraries: ['places']
+  });
+  
+  const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -98,6 +107,51 @@ export default function RegisterAddress() {
     }
   };
 
+  const onLoad = (autocompleteObj: google.maps.places.Autocomplete) => {
+    setAutocomplete(autocompleteObj);
+  };
+
+  const onPlaceChanged = () => {
+    if (autocomplete !== null) {
+      const place = autocomplete.getPlace();
+      if (place && place.address_components) {
+        let street = '';
+        let number = '';
+        let neighborhood = '';
+        let city = '';
+        let state = '';
+        let zip_code = '';
+
+        place.address_components.forEach(component => {
+          const types = component.types;
+          if (types.includes('route')) street = component.long_name;
+          if (types.includes('street_number')) number = component.long_name;
+          if (types.includes('sublocality') || types.includes('neighborhood')) neighborhood = component.long_name;
+          if (types.includes('administrative_area_level_2') || types.includes('locality')) city = component.long_name;
+          if (types.includes('administrative_area_level_1')) state = component.short_name;
+          if (types.includes('postal_code')) zip_code = component.long_name;
+        });
+
+        setManualForm(prev => ({
+          ...prev,
+          street: street || prev.street,
+          number: number || prev.number,
+          neighborhood: neighborhood || prev.neighborhood,
+          city: city || prev.city,
+          state: state || prev.state,
+          zip_code: zip_code || prev.zip_code
+        }));
+
+        if (place.geometry?.location) {
+          setLocation({
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng()
+          });
+        }
+      }
+    }
+  };
+
   const handleManualSubmit = async (e: FormEvent) => {
     e.preventDefault();
     try {
@@ -132,19 +186,19 @@ export default function RegisterAddress() {
   return (
     <div className="flex flex-col h-full bg-gray-50">
       <header className="p-4 bg-white border-b border-gray-200 sticky top-0 z-10">
-        <h1 className="text-lg font-semibold mb-3">Register Address</h1>
+        <h1 className="text-lg font-semibold mb-3">Registrar Endereço</h1>
         <div className="flex p-1 bg-gray-100 rounded-lg">
           <button
             onClick={() => setMode('photo')}
             className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${mode === 'photo' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
           >
-            Photo Scan
+            Escanear Foto
           </button>
           <button
             onClick={() => setMode('manual')}
             className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${mode === 'manual' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
           >
-            Manual Entry
+            Entrada Manual
           </button>
         </div>
       </header>
@@ -152,21 +206,37 @@ export default function RegisterAddress() {
       <div className="flex-1 overflow-y-auto p-4 pb-24">
         {mode === 'manual' ? (
           <form onSubmit={handleManualSubmit} className="space-y-4">
+            {isLoaded && (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY && (
+              <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Pesquisa Avançada (Google)</label>
+                <Autocomplete onLoad={onLoad} onPlaceChanged={onPlaceChanged}>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                      type="text"
+                      placeholder="Buscar endereço..."
+                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
+                    />
+                  </div>
+                </Autocomplete>
+              </div>
+            )}
+            
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Street</label>
+                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Rua</label>
                 <input
                   required
                   type="text"
                   value={manualForm.street}
                   onChange={e => setManualForm({...manualForm, street: e.target.value})}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
-                  placeholder="Main St"
+                  placeholder="Rua Principal"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Number</label>
+                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Número</label>
                   <input
                     required
                     type="text"
@@ -177,53 +247,53 @@ export default function RegisterAddress() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Zip Code</label>
+                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">CEP</label>
                   <input
                     required
                     type="text"
                     value={manualForm.zip_code}
                     onChange={e => setManualForm({...manualForm, zip_code: e.target.value})}
                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
-                    placeholder="12345"
+                    placeholder="12345-678"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Neighborhood</label>
+                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Bairro</label>
                 <input
                   type="text"
                   value={manualForm.neighborhood}
                   onChange={e => setManualForm({...manualForm, neighborhood: e.target.value})}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
-                  placeholder="Downtown"
+                  placeholder="Centro"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">City</label>
+                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Cidade</label>
                   <input
                     required
                     type="text"
                     value={manualForm.city}
                     onChange={e => setManualForm({...manualForm, city: e.target.value})}
                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
-                    placeholder="New York"
+                    placeholder="São Paulo"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">State</label>
+                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Estado</label>
                   <input
                     required
                     type="text"
                     value={manualForm.state}
                     onChange={e => setManualForm({...manualForm, state: e.target.value})}
                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
-                    placeholder="NY"
+                    placeholder="SP"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Label Code (Optional)</label>
+                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Código da Etiqueta (Opcional)</label>
                 <input
                   type="text"
                   value={manualForm.label_code}
@@ -237,7 +307,7 @@ export default function RegisterAddress() {
               type="submit"
               className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-medium shadow-sm active:bg-blue-700 transition-colors"
             >
-              Save Address
+              Salvar Endereço
             </button>
           </form>
         ) : !image ? (
@@ -246,9 +316,9 @@ export default function RegisterAddress() {
               <Camera size={40} />
             </div>
             <div className="text-center space-y-2">
-              <h2 className="text-xl font-semibold text-gray-900">Take a Photo</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Tirar uma Foto</h2>
               <p className="text-gray-500 text-sm max-w-[250px]">
-                Capture a clear photo of the building number, street sign, or facade.
+                Capture uma foto nítida do número do prédio, placa da rua ou fachada.
               </p>
             </div>
             
@@ -274,7 +344,7 @@ export default function RegisterAddress() {
                 className="flex-1 py-4 bg-blue-600 text-white rounded-xl font-medium shadow-sm active:bg-blue-700 transition-colors flex flex-col items-center justify-center gap-2"
               >
                 <Camera size={24} />
-                <span className="text-sm">Camera</span>
+                <span className="text-sm">Câmera</span>
               </button>
               
               <button
@@ -282,7 +352,7 @@ export default function RegisterAddress() {
                 className="flex-1 py-4 bg-white text-gray-700 border border-gray-200 rounded-xl font-medium shadow-sm active:bg-gray-50 transition-colors flex flex-col items-center justify-center gap-2"
               >
                 <Upload size={24} />
-                <span className="text-sm">Gallery</span>
+                <span className="text-sm">Galeria</span>
               </button>
             </div>
           </div>
@@ -294,14 +364,14 @@ export default function RegisterAddress() {
                 onClick={() => { setImage(null); setResult(null); }}
                 className="absolute top-3 right-3 bg-black/50 text-white px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur-md"
               >
-                Retake
+                Refazer
               </button>
             </div>
 
             {analyzing ? (
               <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center space-y-4">
                 <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-                <p className="text-sm font-medium text-gray-600">Analyzing image and location...</p>
+                <p className="text-sm font-medium text-gray-600">Analisando imagem e localização...</p>
               </div>
             ) : result ? (
               <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
@@ -310,7 +380,7 @@ export default function RegisterAddress() {
                     <CheckCircle2 size={20} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Address Identified</h3>
+                    <h3 className="font-semibold text-gray-900">Endereço Identificado</h3>
                     <p className="text-sm text-gray-500 mt-1">
                       {result.formatted_address || `${result.street || ''} ${result.number || ''}, ${result.city || ''}`}
                     </p>
@@ -319,19 +389,19 @@ export default function RegisterAddress() {
                 
                 <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
                   <div>
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Street</p>
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Rua</p>
                     <p className="text-sm font-medium text-gray-900 truncate">{result.street || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Number</p>
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Número</p>
                     <p className="text-sm font-medium text-gray-900 truncate">{result.number || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">City</p>
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Cidade</p>
                     <p className="text-sm font-medium text-gray-900 truncate">{result.city || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Zip Code</p>
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">CEP</p>
                     <p className="text-sm font-medium text-gray-900 truncate">{result.zip_code || '-'}</p>
                   </div>
                 </div>
@@ -340,7 +410,7 @@ export default function RegisterAddress() {
                   onClick={saveAddress}
                   className="w-full py-3.5 mt-2 bg-emerald-600 text-white rounded-xl font-medium shadow-sm active:bg-emerald-700 transition-colors"
                 >
-                  Save Address
+                  Salvar Endereço
                 </button>
               </div>
             ) : null}

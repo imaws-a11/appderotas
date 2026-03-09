@@ -17,11 +17,11 @@ import AddressHistory from "./pages/AddressHistory";
 function BottomNav() {
   const location = useLocation();
   const navItems = [
-    { path: "/", icon: Home, label: "Home" },
-    { path: "/register", icon: Camera, label: "Register" },
-    { path: "/scan", icon: QrCode, label: "Scan" },
-    { path: "/routes", icon: Map, label: "Routes" },
-    { path: "/history", icon: History, label: "History" },
+    { path: "/", icon: Home, label: "Início" },
+    { path: "/register", icon: Camera, label: "Registrar" },
+    { path: "/scan", icon: QrCode, label: "Escanear" },
+    { path: "/routes", icon: Map, label: "Rotas" },
+    { path: "/history", icon: History, label: "Histórico" },
   ];
 
   return (

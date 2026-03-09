@@ -24,12 +24,12 @@ export default function AddressHistory() {
   return (
     <div className="flex flex-col h-full bg-gray-50">
       <header className="p-4 bg-white border-b border-gray-200 sticky top-0 z-10">
-        <h1 className="text-lg font-semibold mb-3">Address History</h1>
+        <h1 className="text-lg font-semibold mb-3">Histórico de Endereços</h1>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input 
             type="text" 
-            placeholder="Search addresses..." 
+            placeholder="Buscar endereços..." 
             className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl text-sm transition-all outline-none"
           />
         </div>
@@ -45,8 +45,8 @@ export default function AddressHistory() {
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
               <History size={32} />
             </div>
-            <h2 className="text-lg font-semibold text-gray-900">No history yet</h2>
-            <p className="text-gray-500 text-sm mt-1">Addresses you register will appear here</p>
+            <h2 className="text-lg font-semibold text-gray-900">Nenhum histórico ainda</h2>
+            <p className="text-gray-500 text-sm mt-1">Os endereços que você registrar aparecerão aqui</p>
           </div>
         ) : (
           addresses.map((address) => (
@@ -70,10 +70,10 @@ export default function AddressHistory() {
                 </p>
                 <div className="flex items-center gap-2 mt-2">
                   {address.is_registered_by_photo ? (
-                    <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-medium rounded uppercase tracking-wider">Photo</span>
+                    <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-medium rounded uppercase tracking-wider">Foto</span>
                   ) : null}
                   {address.label_code ? (
-                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-medium rounded uppercase tracking-wider">Label</span>
+                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-medium rounded uppercase tracking-wider">Etiqueta</span>
                   ) : null}
                 </div>
               </div>

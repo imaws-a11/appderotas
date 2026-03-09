@@ -24,7 +24,7 @@ export default function RoutesList() {
   return (
     <div className="flex flex-col h-full bg-gray-50">
       <header className="p-4 bg-white border-b border-gray-200 flex items-center justify-between sticky top-0 z-10">
-        <h1 className="text-lg font-semibold">My Routes</h1>
+        <h1 className="text-lg font-semibold">Minhas Rotas</h1>
         <button className="w-8 h-8 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
           <Plus size={20} />
         </button>
@@ -40,10 +40,10 @@ export default function RoutesList() {
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
               <MapIcon size={32} />
             </div>
-            <h2 className="text-lg font-semibold text-gray-900">No routes yet</h2>
-            <p className="text-gray-500 text-sm mt-1">Create your first route to start delivering</p>
+            <h2 className="text-lg font-semibold text-gray-900">Nenhuma rota ainda</h2>
+            <p className="text-gray-500 text-sm mt-1">Crie sua primeira rota para começar a entregar</p>
             <button className="mt-6 px-6 py-2.5 bg-blue-600 text-white rounded-xl font-medium shadow-sm active:bg-blue-700 transition-colors">
-              Create Route
+              Criar Rota
             </button>
           </div>
         ) : (
@@ -51,10 +51,10 @@ export default function RoutesList() {
             <div key={route.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
               <div className="p-4 border-b border-gray-100 flex justify-between items-start">
                 <div>
-                  <h3 className="font-semibold text-gray-900">{route.name || `Route #${route.id}`}</h3>
+                  <h3 className="font-semibold text-gray-900">{route.name || `Rota #${route.id}`}</h3>
                   <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
                     <span className="flex items-center gap-1"><Clock size={12} /> {new Date(route.created_at).toLocaleDateString()}</span>
-                    <span className="flex items-center gap-1"><MapIcon size={12} /> {route.stops?.length || 0} stops</span>
+                    <span className="flex items-center gap-1"><MapIcon size={12} /> {route.stops?.length || 0} paradas</span>
                   </div>
                 </div>
                 <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full capitalize">
@@ -75,10 +75,10 @@ export default function RoutesList() {
                         
                         <div className="flex items-center gap-2 mt-3">
                           <button className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium">
-                            <Navigation size={14} /> Navigate
+                            <Navigation size={14} /> Navegar
                           </button>
                           <button className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-medium">
-                            <CheckCircle2 size={14} /> Complete
+                            <CheckCircle2 size={14} /> Concluir
                           </button>
                         </div>
                       </div>

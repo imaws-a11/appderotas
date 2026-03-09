@@ -142,7 +142,7 @@ async function startServer() {
     }
   });
 
-  // Validate label code
+  // Validate label code (manual entry)
   app.post("/api/validate-label", (req, res) => {
     const { code } = req.body;
     try {
@@ -154,6 +154,72 @@ async function startServer() {
       }
     } catch (error) {
       res.status(500).json({ error: "Failed to validate label" });
+    }
+  });
+
+  // Scan label image using Gemini
+  app.post("/api/scan-label", async (req, res) => {
+    const { imageBase64 } = req.body;
+    
+    if (!imageBase64) {
+      return res.status(400).json({ error: "Image is required" });
+    }
+
+    try {
+      const imagePart = {
+        inlineData: {
+          mimeType: "image/jpeg",
+          data: imageBase64.split(',')[1] || imageBase64,
+        },
+      };
+
+      const prompt = "Analyze this image of a delivery label or package. Extract the tracking code, label code, or the delivery address (street, number, city, zip code). Return a JSON object with keys: label_code, street, number, city, zip_code. If a field is not visible, leave it empty.";
+
+      const analysisResponse = await ai.models.generateContent({
+        model: "gemini-3.1-pro-preview",
+        contents: { parts: [imagePart, { text: prompt }] },
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              label_code: { type: Type.STRING },
+              street: { type: Type.STRING },
+              number: { type: Type.STRING },
+              city: { type: Type.STRING },
+              zip_code: { type: Type.STRING },
+            }
+          }
+        }
+      });
+
+      let extractedData: any = {};
+      try {
+        extractedData = JSON.parse(analysisResponse.text || "{}");
+      } catch (e) {
+        console.error("Failed to parse Gemini response", e);
+      }
+
+      // Try to find matching address in DB
+      let address = null;
+      
+      if (extractedData.label_code) {
+        address = db.prepare("SELECT * FROM addresses WHERE label_code = ?").get(extractedData.label_code);
+      }
+      
+      if (!address && extractedData.street && extractedData.number) {
+        // Try fuzzy match on street and number
+        address = db.prepare("SELECT * FROM addresses WHERE street LIKE ? AND number = ?").get(`%${extractedData.street}%`, extractedData.number);
+      }
+
+      if (address) {
+        res.json({ valid: true, address, extractedData });
+      } else {
+        res.json({ valid: false, extractedData });
+      }
+    } catch (error) {
+      console.error("Error scanning label:", error);
+      res.status(500).json({ error: "Failed to scan label" });
     }
   });
 

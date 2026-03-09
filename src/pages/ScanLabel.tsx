@@ -1,50 +1,33 @@
-import { useEffect, useRef, useState } from "react";
-import { Html5QrcodeScanner } from "html5-qrcode";
-import { QrCode, CheckCircle2, XCircle, MapPin } from "lucide-react";
+import { useRef, useState, ChangeEvent } from "react";
+import { QrCode, CheckCircle2, XCircle, MapPin, Camera, Upload } from "lucide-react";
 
 export default function ScanLabel() {
-  const [scanResult, setScanResult] = useState<string | null>(null);
+  const [image, setImage] = useState<string | null>(null);
   const [validationResult, setValidationResult] = useState<any>(null);
   const [validating, setValidating] = useState(false);
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!scanResult) {
-      scannerRef.current = new Html5QrcodeScanner(
-        "reader",
-        { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1 },
-        /* verbose= */ false
-      );
-      
-      scannerRef.current.render(onScanSuccess, onScanFailure);
+  const handleCapture = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImage(reader.result as string);
+        scanLabelImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
-
-    return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(console.error);
-      }
-    };
-  }, [scanResult]);
-
-  const onScanSuccess = (decodedText: string) => {
-    if (scannerRef.current) {
-      scannerRef.current.clear();
-    }
-    setScanResult(decodedText);
-    validateLabel(decodedText);
   };
 
-  const onScanFailure = (error: any) => {
-    // Ignore frequent scan failures
-  };
-
-  const validateLabel = async (code: string) => {
+  const scanLabelImage = async (base64Image: string) => {
     setValidating(true);
     try {
-      const response = await fetch("/api/validate-label", {
+      const response = await fetch("/api/scan-label", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code })
+        body: JSON.stringify({ imageBase64: base64Image })
       });
       const data = await response.json();
       setValidationResult(data);
@@ -57,43 +40,88 @@ export default function ScanLabel() {
   };
 
   const resetScanner = () => {
-    setScanResult(null);
+    setImage(null);
     setValidationResult(null);
   };
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
       <header className="p-4 bg-white border-b border-gray-200 flex items-center justify-between sticky top-0 z-10">
-        <h1 className="text-lg font-semibold">Scan Label</h1>
+        <h1 className="text-lg font-semibold">Escanear Etiqueta</h1>
       </header>
 
-      <div className="flex-1 p-4 flex flex-col items-center">
-        {!scanResult ? (
-          <div className="w-full max-w-sm flex flex-col items-center mt-8">
-            <div className="text-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Scan QR or Barcode</h2>
-              <p className="text-gray-500 text-sm mt-1">Point your camera at the delivery label</p>
+      <div className="flex-1 overflow-y-auto p-4 pb-24">
+        {!image ? (
+          <div className="h-full flex flex-col items-center justify-center space-y-6">
+            <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500">
+              <QrCode size={40} />
+            </div>
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-semibold text-gray-900">Escanear Etiqueta</h2>
+              <p className="text-gray-500 text-sm max-w-[250px]">
+                Tire uma foto da etiqueta de entrega para validar o endereço.
+              </p>
             </div>
             
-            <div className="w-full bg-white p-2 rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
-              <div id="reader" className="w-full rounded-2xl overflow-hidden [&>video]:object-cover"></div>
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              ref={cameraInputRef}
+              onChange={handleCapture}
+            />
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              ref={galleryInputRef}
+              onChange={handleCapture}
+            />
+            
+            <div className="flex w-full max-w-xs gap-3">
+              <button
+                onClick={() => cameraInputRef.current?.click()}
+                className="flex-1 py-4 bg-emerald-600 text-white rounded-xl font-medium shadow-sm active:bg-emerald-700 transition-colors flex flex-col items-center justify-center gap-2"
+              >
+                <Camera size={24} />
+                <span className="text-sm">Câmera</span>
+              </button>
+              
+              <button
+                onClick={() => galleryInputRef.current?.click()}
+                className="flex-1 py-4 bg-white text-gray-700 border border-gray-200 rounded-xl font-medium shadow-sm active:bg-gray-50 transition-colors flex flex-col items-center justify-center gap-2"
+              >
+                <Upload size={24} />
+                <span className="text-sm">Galeria</span>
+              </button>
             </div>
           </div>
         ) : (
-          <div className="w-full max-w-sm mt-8 space-y-6">
+          <div className="space-y-6">
+            <div className="relative rounded-2xl overflow-hidden shadow-sm border border-gray-200 bg-black aspect-[4/3]">
+              <img src={image} alt="Captured Label" className="w-full h-full object-contain" />
+              <button 
+                onClick={resetScanner}
+                className="absolute top-3 right-3 bg-black/50 text-white px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur-md"
+              >
+                Refazer
+              </button>
+            </div>
+
             {validating ? (
               <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center text-center">
-                <div className="w-16 h-16 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-                <h3 className="font-semibold text-gray-900">Validating Label...</h3>
-                <p className="text-sm text-gray-500 mt-1 break-all">{scanResult}</p>
+                <div className="w-16 h-16 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin mb-4"></div>
+                <h3 className="font-semibold text-gray-900">Analisando Etiqueta...</h3>
+                <p className="text-sm text-gray-500 mt-1">Extraindo detalhes usando IA</p>
               </div>
             ) : validationResult?.valid ? (
               <div className="bg-white p-6 rounded-2xl border border-emerald-100 shadow-sm flex flex-col items-center text-center">
                 <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4">
                   <CheckCircle2 size={32} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Valid Address</h3>
-                <p className="text-sm text-emerald-600 font-medium mt-1">Label matches database</p>
+                <h3 className="text-xl font-bold text-gray-900">Endereço Válido</h3>
+                <p className="text-sm text-emerald-600 font-medium mt-1">Etiqueta corresponde ao banco de dados</p>
                 
                 <div className="w-full mt-6 p-4 bg-gray-50 rounded-xl text-left">
                   <div className="flex items-start gap-3">
@@ -113,7 +141,7 @@ export default function ScanLabel() {
                   onClick={resetScanner}
                   className="w-full py-3.5 mt-6 bg-gray-900 text-white rounded-xl font-medium active:bg-gray-800 transition-colors"
                 >
-                  Scan Another
+                  Escanear Outro
                 </button>
               </div>
             ) : (
@@ -121,18 +149,25 @@ export default function ScanLabel() {
                 <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4">
                   <XCircle size={32} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Invalid Label</h3>
-                <p className="text-sm text-red-600 font-medium mt-1">Address not found in database</p>
+                <h3 className="text-xl font-bold text-gray-900">Etiqueta Inválida</h3>
+                <p className="text-sm text-red-600 font-medium mt-1">Endereço não encontrado no banco de dados</p>
                 
-                <div className="w-full mt-6 p-4 bg-gray-50 rounded-xl break-all text-sm text-gray-500">
-                  Scanned code: {scanResult}
-                </div>
+                {validationResult?.extractedData && (
+                  <div className="w-full mt-6 p-4 bg-gray-50 rounded-xl text-sm text-gray-500 text-left">
+                    <p className="font-medium text-gray-700 mb-2">Informações Extraídas:</p>
+                    <ul className="list-disc pl-4 space-y-1">
+                      {validationResult.extractedData.label_code && <li>Código: {validationResult.extractedData.label_code}</li>}
+                      {validationResult.extractedData.street && <li>Rua: {validationResult.extractedData.street}</li>}
+                      {validationResult.extractedData.number && <li>Número: {validationResult.extractedData.number}</li>}
+                    </ul>
+                  </div>
+                )}
                 
                 <button
                   onClick={resetScanner}
                   className="w-full py-3.5 mt-6 bg-gray-900 text-white rounded-xl font-medium active:bg-gray-800 transition-colors"
                 >
-                  Try Again
+                  Tentar Novamente
                 </button>
               </div>
             )}
