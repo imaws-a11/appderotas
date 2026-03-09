@@ -1,0 +1,8 @@
+{
+  "name": "RouteMaster",
+  "description": "A smart mobile app for logistics and delivery professionals to register and validate addresses using photos and label scanning.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
