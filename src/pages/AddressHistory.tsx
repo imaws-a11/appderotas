@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { History, MapPin, Search } from "lucide-react";
+import { History, MapPin, Search, Trash2, AlertTriangle, X } from "lucide-react";
 
 export default function AddressHistory() {
   const [addresses, setAddresses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [addressToDelete, setAddressToDelete] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchAddresses();
@@ -21,8 +23,29 @@ export default function AddressHistory() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!addressToDelete) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/addresses/${addressToDelete.id}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        setAddresses(addresses.filter(a => a.id !== addressToDelete.id));
+        setAddressToDelete(null);
+      } else {
+        alert("Failed to delete address");
+      }
+    } catch (error) {
+      console.error("Failed to delete address", error);
+      alert("Failed to delete address");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="flex flex-col h-full bg-gray-50 relative">
       <header className="p-4 bg-white border-b border-gray-200 sticky top-0 z-10">
         <h1 className="text-lg font-semibold mb-3">Histórico de Endereços</h1>
         <div className="relative">
@@ -50,7 +73,7 @@ export default function AddressHistory() {
           </div>
         ) : (
           addresses.map((address) => (
-            <div key={address.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex gap-4">
+            <div key={address.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex gap-4 relative">
               {address.image_url ? (
                 <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-gray-100">
                   <img src={address.image_url} alt="Address" className="w-full h-full object-cover" />
@@ -61,7 +84,7 @@ export default function AddressHistory() {
                 </div>
               )}
               
-              <div className="flex-1 min-w-0 flex flex-col justify-center">
+              <div className="flex-1 min-w-0 flex flex-col justify-center pr-8">
                 <h3 className="font-semibold text-gray-900 truncate">
                   {address.street}, {address.number}
                 </h3>
@@ -77,10 +100,64 @@ export default function AddressHistory() {
                   ) : null}
                 </div>
               </div>
+
+              <button 
+                onClick={() => setAddressToDelete(address)}
+                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                aria-label="Excluir endereço"
+              >
+                <Trash2 size={18} />
+              </button>
             </div>
           ))
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {addressToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 text-red-600">
+                <AlertTriangle size={24} />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Excluir Endereço?</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Tem certeza que deseja excluir o endereço <strong>{addressToDelete.street}, {addressToDelete.number}</strong>? Esta ação não pode ser desfeita.
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setAddressToDelete(null)}
+                  disabled={isDeleting}
+                  className="flex-1 py-2.5 px-4 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="flex-1 py-2.5 px-4 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Trash2 size={18} />
+                      Excluir
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+            <button 
+              onClick={() => setAddressToDelete(null)}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

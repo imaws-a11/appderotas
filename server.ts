@@ -39,6 +39,26 @@ async function startServer() {
     }
   });
 
+  // Delete an address
+  app.delete("/api/addresses/:id", (req, res) => {
+    const { id } = req.params;
+    try {
+      // First, delete any route_stops referencing this address to maintain referential integrity
+      db.prepare("DELETE FROM route_stops WHERE address_id = ?").run(id);
+      // Then delete the address
+      const info = db.prepare("DELETE FROM addresses WHERE id = ?").run(id);
+      
+      if (info.changes > 0) {
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ error: "Address not found" });
+      }
+    } catch (error) {
+      console.error("Failed to delete address:", error);
+      res.status(500).json({ error: "Failed to delete address" });
+    }
+  });
+
   // Analyze address image using Gemini
   app.post("/api/analyze-address", async (req, res) => {
     const { imageBase64, latitude, longitude } = req.body;
