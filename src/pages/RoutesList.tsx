@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
-import { Map as MapIcon, Plus, Navigation, Clock, CheckCircle2 } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { Map as MapIcon, Plus, Navigation as NavIcon, Clock, CheckCircle2, ChevronRight } from "lucide-react";
 
 export default function RoutesList() {
+  const navigate = useNavigate();
   const [routes, setRoutes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -53,9 +55,9 @@ export default function RoutesList() {
     <div className="flex flex-col h-full bg-gray-50">
       <header className="p-4 bg-white border-b border-gray-200 flex items-center justify-between sticky top-0 z-10">
         <h1 className="text-lg font-semibold">Minhas Rotas</h1>
-        <button className="w-8 h-8 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
+        <Link to="/create-route" className="w-8 h-8 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
           <Plus size={20} />
-        </button>
+        </Link>
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
@@ -70,9 +72,9 @@ export default function RoutesList() {
             </div>
             <h2 className="text-lg font-semibold text-gray-900">Nenhuma rota ainda</h2>
             <p className="text-gray-500 text-sm mt-1">Crie sua primeira rota para começar a entregar</p>
-            <button className="mt-6 px-6 py-2.5 bg-blue-600 text-white rounded-xl font-medium shadow-sm active:bg-blue-700 transition-colors">
+            <Link to="/create-route" className="mt-6 inline-block px-6 py-2.5 bg-blue-600 text-white rounded-xl font-medium shadow-sm active:bg-blue-700 transition-colors">
               Criar Rota
-            </button>
+            </Link>
           </div>
         ) : (
           routes.map((route) => (
@@ -91,6 +93,14 @@ export default function RoutesList() {
               </div>
               
               <div className="p-4 bg-gray-50/50">
+                <button 
+                  onClick={() => navigate(`/navigation/${route.id}`)}
+                  className="w-full mb-4 flex items-center justify-center gap-2 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 active:scale-95 transition-transform"
+                >
+                  <NavIcon size={18} />
+                  Iniciar Navegação
+                </button>
+
                 <div className="space-y-3 relative before:absolute before:inset-y-0 before:left-[11px] before:w-0.5 before:bg-gray-200">
                   {route.stops?.map((stop: any, idx: number) => {
                     const isCompleted = stop.status === 'completed';
@@ -109,8 +119,11 @@ export default function RoutesList() {
                         
                         {!isCompleted && (
                           <div className="flex items-center gap-2 mt-3">
-                            <button className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium">
-                              <Navigation size={14} /> Navegar
+                            <button 
+                              onClick={() => navigate(`/navigation/${route.id}`)}
+                              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium"
+                            >
+                              <NavIcon size={14} /> Navegar
                             </button>
                             <button 
                               onClick={() => handleCompleteStop(route.id, stop.id)}

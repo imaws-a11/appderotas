@@ -1,8 +1,7 @@
 {
-  "name": "RouteMaster",
-  "description": "A smart mobile app for logistics and delivery professionals to register and validate addresses using photos and label scanning.",
+  "name": "RoutePlanner",
+  "description": "A smart route planning app that builds delivery routes with AI-powered optimization and in-app navigation.",
   "requestFramePermissions": [
-    "camera",
     "geolocation"
   ]
 }

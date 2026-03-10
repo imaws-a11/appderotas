@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Camera, QrCode, Map as MapIcon, History, ChevronRight, AlertCircle } from "lucide-react";
+import { Map as MapIcon, History, ChevronRight, AlertCircle, Info, Plus } from "lucide-react";
 import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer, Polyline } from '@react-google-maps/api';
 
 const containerStyle = {
@@ -114,43 +114,49 @@ export default function Dashboard() {
   return (
     <div className="p-6">
       <header className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">RouteMaster</h1>
-        <p className="text-gray-500 text-sm mt-1">Gerencie suas rotas e entregas</p>
+        <h1 className="text-2xl font-bold text-gray-900">RoutePlanner</h1>
+        <p className="text-gray-500 text-sm mt-1">Planeje suas rotas de entrega</p>
       </header>
 
-      <div className="grid grid-cols-2 gap-4 mb-8">
+      <div className="mb-8">
         <Link
-          to="/register"
-          className="flex flex-col items-center justify-center p-6 bg-blue-50 rounded-2xl border border-blue-100 active:scale-95 transition-transform"
+          to="/create-route"
+          className="flex items-center justify-center gap-3 p-6 bg-blue-600 rounded-2xl shadow-lg shadow-blue-200 active:scale-95 transition-transform text-white"
         >
-          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3 text-blue-600">
-            <Camera size={24} />
+          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+            <Plus size={24} />
           </div>
-          <span className="font-semibold text-blue-900 text-sm text-center">Registrar<br/>Endereço</span>
-        </Link>
-        
-        <Link
-          to="/scan"
-          className="flex flex-col items-center justify-center p-6 bg-emerald-50 rounded-2xl border border-emerald-100 active:scale-95 transition-transform"
-        >
-          <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mb-3 text-emerald-600">
-            <QrCode size={24} />
-          </div>
-          <span className="font-semibold text-emerald-900 text-sm text-center">Escanear<br/>Etiqueta</span>
+          <span className="font-bold text-lg">Criar Nova Rota</span>
         </Link>
       </div>
 
       <div className="mb-8">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Locais Registrados</h2>
-        {!(import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY && (
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Mapa de Entregas</h2>
+          <Link 
+            to="/routes"
+            className="flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full active:scale-95 transition-transform"
+          >
+            <MapIcon size={14} />
+            Ver Rotas
+          </Link>
+        </div>
+        {!(import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY ? (
           <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
             <AlertCircle className="text-amber-500 shrink-0 mt-0.5" size={18} />
             <p className="text-xs text-amber-800">
               A chave da API do Google Maps não está configurada. Por favor, adicione VITE_GOOGLE_MAPS_API_KEY nas configurações.
             </p>
           </div>
+        ) : directionsError && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3">
+            <Info className="text-blue-500 shrink-0 mt-0.5" size={18} />
+            <p className="text-xs text-blue-800">
+              Exibindo rotas diretas. Para rotas reais pelas ruas, ative a <strong>Directions API</strong> no seu Google Cloud Console.
+            </p>
+          </div>
         )}
-        <div className="h-48 w-full rounded-2xl overflow-hidden shadow-sm border border-gray-200 relative z-0">
+        <div className="h-64 w-full rounded-2xl overflow-hidden shadow-sm border border-gray-200 relative z-0">
           {loadError ? (
             <div className="w-full h-full bg-red-50 flex flex-col items-center justify-center p-4 text-center">
               <AlertCircle className="text-red-500 mb-2" size={24} />

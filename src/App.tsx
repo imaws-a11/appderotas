@@ -4,22 +4,20 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from "react-router-dom";
-import { Home, Camera, QrCode, Map, History } from "lucide-react";
+import { Home, Map, History } from "lucide-react";
 import { cn } from "./lib/utils";
 
 // Pages
 import Dashboard from "./pages/Dashboard";
-import RegisterAddress from "./pages/RegisterAddress";
-import ScanLabel from "./pages/ScanLabel";
 import RoutesList from "./pages/RoutesList";
 import AddressHistory from "./pages/AddressHistory";
+import CreateRoute from "./pages/CreateRoute";
+import Navigation from "./pages/Navigation";
 
 function BottomNav() {
   const location = useLocation();
   const navItems = [
     { path: "/", icon: Home, label: "Início" },
-    { path: "/register", icon: Camera, label: "Registrar" },
-    { path: "/scan", icon: QrCode, label: "Escanear" },
     { path: "/routes", icon: Map, label: "Rotas" },
     { path: "/history", icon: History, label: "Histórico" },
   ];
@@ -55,9 +53,9 @@ export default function App() {
         <main className="max-w-md mx-auto min-h-screen bg-white shadow-sm relative">
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/register" element={<RegisterAddress />} />
-            <Route path="/scan" element={<ScanLabel />} />
             <Route path="/routes" element={<RoutesList />} />
+            <Route path="/navigation/:routeId" element={<Navigation />} />
+            <Route path="/create-route" element={<CreateRoute />} />
             <Route path="/history" element={<AddressHistory />} />
           </Routes>
           <BottomNav />

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, MapPin, Loader2, Save, Crosshair, Sparkles } from "lucide-react";
+import { verifyCoordinates } from "../services/gemini";
 
 interface EditAddressModalProps {
   address: any;
@@ -70,30 +71,18 @@ export default function EditAddressModal({ address, onClose, onSave }: EditAddre
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
 
-      // 2. Use backend endpoint to verify/refine coordinates with Gemini and Google Maps
-      const response = await fetch('/api/verify-coordinates', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      // 2. Use frontend Gemini service to verify/refine coordinates
+      const parsedData = await verifyCoordinates(
+        {
+          street: formData.street,
+          number: formData.number,
+          city: formData.city,
+          state: formData.state,
+          zip_code: formData.zip_code
         },
-        body: JSON.stringify({
-          address: {
-            street: formData.street,
-            number: formData.number,
-            city: formData.city,
-            state: formData.state,
-            zip_code: formData.zip_code
-          },
-          latitude: lat,
-          longitude: lng
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to verify coordinates');
-      }
-
-      const parsedData = await response.json();
+        lat,
+        lng
+      );
 
       if (parsedData.latitude && parsedData.longitude) {
         setFormData(prev => ({

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { History, MapPin, Search, Trash2, AlertTriangle, X, Edit3, Crosshair, Loader2 } from "lucide-react";
 import EditAddressModal from "../components/EditAddressModal";
+import { verifyCoordinates } from "../services/gemini";
 
 export default function AddressHistory() {
   const [addresses, setAddresses] = useState<any[]>([]);
@@ -48,30 +49,18 @@ export default function AddressHistory() {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
 
-      // 2. Use backend endpoint to verify/refine coordinates with Gemini and Google Maps
-      const response = await fetch('/api/verify-coordinates', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      // 2. Use frontend Gemini service to verify/refine coordinates
+      const parsedData = await verifyCoordinates(
+        {
+          street: address.street,
+          number: address.number,
+          city: address.city,
+          state: address.state,
+          zip_code: address.zip_code
         },
-        body: JSON.stringify({
-          address: {
-            street: address.street,
-            number: address.number,
-            city: address.city,
-            state: address.state,
-            zip_code: address.zip_code
-          },
-          latitude: lat,
-          longitude: lng
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to verify coordinates');
-      }
-
-      const parsedData = await response.json();
+        lat,
+        lng
+      );
       
       let newLat = lat;
       let newLng = lng;
@@ -145,16 +134,22 @@ export default function AddressHistory() {
     setAddressToEdit(null);
   };
 
-  const filteredAddresses = addresses.filter(address => {
-    const query = searchQuery.toLowerCase();
-    return (
-      (address.street && address.street.toLowerCase().includes(query)) ||
-      (address.number && address.number.toLowerCase().includes(query)) ||
-      (address.city && address.city.toLowerCase().includes(query)) ||
-      (address.state && address.state.toLowerCase().includes(query)) ||
-      (address.label_code && address.label_code.toLowerCase().includes(query))
-    );
-  });
+  const filteredAddresses = addresses
+    .filter(address => {
+      const query = searchQuery.toLowerCase();
+      return (
+        (address.street && address.street.toLowerCase().includes(query)) ||
+        (address.number && address.number.toLowerCase().includes(query)) ||
+        (address.city && address.city.toLowerCase().includes(query)) ||
+        (address.state && address.state.toLowerCase().includes(query)) ||
+        (address.label_code && address.label_code.toLowerCase().includes(query))
+      );
+    })
+    .sort((a, b) => {
+      const streetA = (a.street || "").toLowerCase();
+      const streetB = (b.street || "").toLowerCase();
+      return streetA.localeCompare(streetB);
+    });
 
   return (
     <div className="flex flex-col h-full bg-gray-50 relative">
