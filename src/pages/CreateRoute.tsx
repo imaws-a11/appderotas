@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { MapPin, Check, ChevronLeft, Save, Loader2, Sparkles } from "lucide-react";
 import { optimizeRoute } from "../services/gemini";
 
 export default function CreateRoute() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [addresses, setAddresses] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [routeName, setRouteName] = useState("");
@@ -14,6 +15,11 @@ export default function CreateRoute() {
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
 
   useEffect(() => {
+    const idsParam = searchParams.get("ids");
+    if (idsParam) {
+      const ids = idsParam.split(",").map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+      setSelectedIds(ids);
+    }
     fetchAddresses();
     
     if ("geolocation" in navigator) {

@@ -13,6 +13,7 @@ import RoutesList from "./pages/RoutesList";
 import AddressHistory from "./pages/AddressHistory";
 import CreateRoute from "./pages/CreateRoute";
 import Navigation from "./pages/Navigation";
+import ScanAddress from "./pages/ScanAddress";
 
 function BottomNav() {
   const location = useLocation();
@@ -57,6 +58,7 @@ export default function App() {
             <Route path="/navigation/:routeId" element={<Navigation />} />
             <Route path="/create-route" element={<CreateRoute />} />
             <Route path="/history" element={<AddressHistory />} />
+            <Route path="/scan-address" element={<ScanAddress />} />
           </Routes>
           <BottomNav />
         </main>

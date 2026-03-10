@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { History, MapPin, Search, Trash2, AlertTriangle, X, Edit3, Crosshair, Loader2 } from "lucide-react";
+import { History, MapPin, Search, Trash2, AlertTriangle, X, Edit3, Crosshair, Loader2, Plus, Navigation } from "lucide-react";
 import EditAddressModal from "../components/EditAddressModal";
 import { verifyCoordinates } from "../services/gemini";
 
@@ -8,6 +8,7 @@ export default function AddressHistory() {
   const [loading, setLoading] = useState(true);
   const [addressToDelete, setAddressToDelete] = useState<any>(null);
   const [addressToEdit, setAddressToEdit] = useState<any>(null);
+  const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [updatingCoordsFor, setUpdatingCoordsFor] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -26,6 +27,12 @@ export default function AddressHistory() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpenNavigation = (address: any) => {
+    if (!address.latitude || !address.longitude) return;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${address.latitude},${address.longitude}`;
+    window.open(url, '_blank');
   };
 
   const handleUpdateCoordinates = async (address: any) => {
@@ -134,6 +141,11 @@ export default function AddressHistory() {
     setAddressToEdit(null);
   };
 
+  const handleAddressAdded = (newAddress: any) => {
+    setAddresses([newAddress, ...addresses]);
+    setIsAddingAddress(false);
+  };
+
   const filteredAddresses = addresses
     .filter(address => {
       const query = searchQuery.toLowerCase();
@@ -154,7 +166,16 @@ export default function AddressHistory() {
   return (
     <div className="flex flex-col h-full bg-gray-50 relative">
       <header className="p-4 bg-white border-b border-gray-200 sticky top-0 z-10">
-        <h1 className="text-lg font-semibold mb-3">Histórico de Endereços</h1>
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="text-lg font-semibold">Histórico de Endereços</h1>
+          <button
+            onClick={() => setIsAddingAddress(true)}
+            className="p-2 bg-blue-600 text-white rounded-lg shadow-sm active:scale-95 transition-transform"
+            aria-label="Adicionar novo endereço"
+          >
+            <Plus size={20} />
+          </button>
+        </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input 
@@ -179,6 +200,12 @@ export default function AddressHistory() {
             </div>
             <h2 className="text-lg font-semibold text-gray-900">Nenhum histórico ainda</h2>
             <p className="text-gray-500 text-sm mt-1">Os endereços que você registrar aparecerão aqui</p>
+            <button
+              onClick={() => setIsAddingAddress(true)}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl font-medium shadow-sm active:scale-95 transition-transform"
+            >
+              Adicionar Primeiro Endereço
+            </button>
           </div>
         ) : filteredAddresses.length === 0 ? (
           <div className="text-center py-12">
@@ -229,6 +256,17 @@ export default function AddressHistory() {
                     )}
                     GPS+IA
                   </button>
+
+                  {address.latitude && address.longitude && (
+                    <button
+                      onClick={() => handleOpenNavigation(address)}
+                      className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors text-[10px] font-medium rounded uppercase tracking-wider"
+                      title="Abrir no Google Maps"
+                    >
+                      <Navigation size={12} />
+                      Navegar
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -252,6 +290,15 @@ export default function AddressHistory() {
           ))
         )}
       </div>
+
+      {/* Floating Action Button for Adding Address */}
+      <button
+        onClick={() => setIsAddingAddress(true)}
+        className="fixed bottom-20 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform z-20"
+        aria-label="Adicionar novo endereço"
+      >
+        <Plus size={24} />
+      </button>
 
       {/* Delete Confirmation Modal */}
       {addressToDelete && (
@@ -305,6 +352,14 @@ export default function AddressHistory() {
           address={addressToEdit} 
           onClose={() => setAddressToEdit(null)} 
           onSave={handleAddressUpdated} 
+        />
+      )}
+
+      {/* Add Address Modal */}
+      {isAddingAddress && (
+        <EditAddressModal 
+          onClose={() => setIsAddingAddress(false)} 
+          onSave={handleAddressAdded} 
         />
       )}
     </div>

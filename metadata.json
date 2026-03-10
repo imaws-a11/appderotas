@@ -2,6 +2,8 @@
   "name": "RoutePlanner",
   "description": "A smart route planning app that builds delivery routes with AI-powered optimization and in-app navigation.",
   "requestFramePermissions": [
-    "geolocation"
+    "geolocation",
+    "camera",
+    "microphone"
   ]
 }

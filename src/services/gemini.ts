@@ -93,8 +93,100 @@ export const analyzeAddressImage = async (imageBase64: string, latitude?: number
 
 export const verifyCoordinates = async (address: any, latitude: number, longitude: number) => {
   const ai = getAI();
+  const apiKey = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY;
+
+  // Try to get precise coordinates from Google Maps Geocoding API first
+  if (apiKey) {
+    try {
+      const addressStr = `${address.street}, ${address.number}, ${address.city}, ${address.state}`;
+      const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(addressStr)}&key=${apiKey}`);
+      const data = await response.json();
+      
+      if (data.status === "OK" && data.results.length > 0) {
+        const location = data.results[0].geometry.location;
+        return {
+          latitude: location.lat,
+          longitude: location.lng,
+          verified: true
+        };
+      }
+    } catch (e) {
+      console.error("Google Maps Geocoding failed in verifyCoordinates", e);
+    }
+  }
+
+  // Fallback to Gemini with Maps Grounding
+  const mapsPrompt = `Verify the coordinates (${latitude}, ${longitude}) for the address: ${JSON.stringify(address)}. 
+  If they are incorrect, provide the correct latitude and longitude. 
+  Return a JSON object with keys: latitude, longitude.`;
   
-  const mapsPrompt = `Given the address details: ${JSON.stringify(address)} and the current GPS coordinates: ${latitude}, ${longitude}. Verify if these coordinates are accurate for this address. Return a JSON object with keys: latitude, longitude. If the GPS coordinates seem correct for the address, return them. If they seem off, return the corrected coordinates based on the address using Google Maps.`;
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: mapsPrompt,
+    config: {
+      tools: [{ googleMaps: {} }],
+      toolConfig: {
+        retrievalConfig: {
+          latLng: { latitude, longitude }
+        }
+      }
+    }
+  });
+  
+  const parseResponse = await ai.models.generateContent({
+     model: "gemini-3.1-flash-lite-preview",
+     contents: `Extract latitude and longitude from: ${response.text}`,
+     config: {
+       responseMimeType: "application/json",
+       responseSchema: {
+         type: Type.OBJECT,
+         properties: {
+           latitude: { type: Type.NUMBER },
+           longitude: { type: Type.NUMBER }
+         },
+         required: ["latitude", "longitude"]
+       }
+     }
+  });
+  
+  return JSON.parse(parseResponse.text || "{}");
+};
+
+export const getAddressFromLocation = async (latitude: number, longitude: number) => {
+  const ai = getAI();
+  const apiKey = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY;
+
+  // 1. Try Google Maps Geocoding API for high precision
+  if (apiKey) {
+    try {
+      const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}&language=pt-BR`);
+      const data = await response.json();
+      
+      if (data.status === "OK" && data.results.length > 0) {
+        const result = data.results[0];
+        const components = result.address_components;
+        
+        const getComponent = (types: string[]) => 
+          components.find((c: any) => types.some(t => c.types.includes(t)))?.long_name || "";
+
+        return {
+          street: getComponent(["route"]),
+          number: getComponent(["street_number"]),
+          neighborhood: getComponent(["sublocality", "neighborhood", "sublocality_level_1"]),
+          city: getComponent(["administrative_area_level_2", "locality"]),
+          state: getComponent(["administrative_area_level_1"]),
+          zip_code: getComponent(["postal_code"]),
+          formatted_address: result.formatted_address
+        };
+      }
+    } catch (e) {
+      console.error("Google Maps Reverse Geocoding failed", e);
+    }
+  }
+
+  // 2. Fallback to Gemini with Maps Grounding
+  const mapsPrompt = `Provide the full address for coordinates: ${latitude}, ${longitude}. 
+  Return a JSON object with keys: street, number, neighborhood, city, state, zip_code.`;
   
   const mapsResponse = await ai.models.generateContent({
     model: "gemini-2.5-flash",
@@ -103,26 +195,26 @@ export const verifyCoordinates = async (address: any, latitude: number, longitud
       tools: [{ googleMaps: {} }],
       toolConfig: {
         retrievalConfig: {
-          latLng: {
-            latitude: latitude,
-            longitude: longitude
-          }
+          latLng: { latitude, longitude }
         }
       }
     }
   });
   
-  const parsePrompt = `Extract the latitude and longitude from this text into JSON: ${mapsResponse.text}`;
   const parseResponse = await ai.models.generateContent({
      model: "gemini-3.1-flash-lite-preview",
-     contents: parsePrompt,
+     contents: `Extract address components from: ${mapsResponse.text}`,
      config: {
        responseMimeType: "application/json",
        responseSchema: {
          type: Type.OBJECT,
          properties: {
-           latitude: { type: Type.NUMBER },
-           longitude: { type: Type.NUMBER }
+           street: { type: Type.STRING },
+           number: { type: Type.STRING },
+           neighborhood: { type: Type.STRING },
+           city: { type: Type.STRING },
+           state: { type: Type.STRING },
+           zip_code: { type: Type.STRING }
          }
        }
      }
